@@ -54,20 +54,27 @@ public class BotCommandHandler : BackgroundService
         var normalized = text.Trim().ToLowerInvariant().Replace(",", "").Replace("!", "");
 
         var chatId = update.Message.Chat.Id;
+        var lang = update.Message.From?.LanguageCode;
+        var en = lang != null && lang.StartsWith("en", StringComparison.OrdinalIgnoreCase);
 
         if (normalized is "бот жги" or "/burn")
         {
             _logger.LogInformation("Received '{Command}' from chat {ChatId}", text, chatId);
-            await HandleBurnAsync(chatId, ct);
+            await HandleBurnAsync(chatId, en, ct);
         }
         else if (normalized is "бот мем" or "бот дай мем" or "бот мемас" or "бот дай мемас" or "/meme")
         {
             _logger.LogInformation("Received '{Command}' from chat {ChatId}", text, chatId);
-            await HandleMemeAsync(chatId, ct);
+            await HandleMemeAsync(chatId, en, ct);
+        }
+        else if (normalized is "/help" or "бот помоги" or "бот хелп")
+        {
+            _logger.LogInformation("Received '{Command}' from chat {ChatId}", text, chatId);
+            await HandleHelpAsync(chatId, en, ct);
         }
     }
 
-    private async Task HandleBurnAsync(long chatId, CancellationToken ct)
+    private async Task HandleBurnAsync(long chatId, bool en, CancellationToken ct)
     {
         try
         {
@@ -75,7 +82,9 @@ public class BotCommandHandler : BackgroundService
 
             if (words.Count == 0)
             {
-                var reply = _emptyReplies[_random.Next(_emptyReplies.Length)];
+                var reply = en
+                    ? "THE AIR IS SILENT"
+                    : _emptyReplies[_random.Next(_emptyReplies.Length)];
                 await _botSender.SendMessageAsync(chatId, reply, ct);
                 _logger.LogInformation("No recent words, sent empty reply to chat {ChatId}", chatId);
                 return;
@@ -88,11 +97,11 @@ public class BotCommandHandler : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error handling burn command in chat {ChatId}", chatId);
-            await _botSender.SendMessageAsync(chatId, "ОШИБКА ПРИЁМА", ct);
+            await _botSender.SendMessageAsync(chatId, en ? "RECEIVE ERROR" : "ОШИБКА ПРИЁМА", ct);
         }
     }
 
-    private async Task HandleMemeAsync(long chatId, CancellationToken ct)
+    private async Task HandleMemeAsync(long chatId, bool en, CancellationToken ct)
     {
         try
         {
@@ -100,7 +109,7 @@ public class BotCommandHandler : BackgroundService
 
             if (memePath is null)
             {
-                await _botSender.SendMessageAsync(chatId, "МЕМОВ НЕТ", ct);
+                await _botSender.SendMessageAsync(chatId, en ? "NO MEMES" : "МЕМОВ НЕТ", ct);
                 _logger.LogWarning("No memes available for chat {ChatId}", chatId);
                 return;
             }
@@ -111,8 +120,28 @@ public class BotCommandHandler : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error handling meme command in chat {ChatId}", chatId);
-            await _botSender.SendMessageAsync(chatId, "ОШИБКА ПЕРЕДАЧИ", ct);
+            await _botSender.SendMessageAsync(chatId, en ? "TRANSMISSION ERROR" : "ОШИБКА ПЕРЕДАЧИ", ct);
         }
+    }
+
+    private async Task HandleHelpAsync(long chatId, bool en, CancellationToken ct)
+    {
+        var help = en
+            ? """
+              📡 NOTAPIDOR-LITE — COMMANDS
+
+              /burn — latest intercepted words
+              /meme — random meme
+              /help — this help
+              """
+            : """
+              📡 НЕПИДОРАСИЙ-ЛАЙТ — КОМАНДЫ
+
+              /burn, бот жги — последние перехваченные слова
+              /meme, бот мем — случайный мем
+              /help, бот помоги — эта справка
+              """;
+        await _botSender.SendMessageAsync(chatId, help, ct);
     }
 
     private Task HandleErrorAsync(ITelegramBotClient bot, Exception exception, CancellationToken ct)
