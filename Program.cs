@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using UVBStoler;
+using UVBStealer;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -14,6 +14,7 @@ builder.Services.AddSingleton<BotSender>();
 builder.Services.AddSingleton<ChannelPoller>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ChannelPoller>());
 builder.Services.AddHostedService<BotCommandHandler>();
+builder.Services.AddHostedService<MemeSender>();
 
 var host = builder.Build();
 await host.RunAsync();

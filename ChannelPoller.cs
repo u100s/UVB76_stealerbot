@@ -2,7 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace UVBStoler;
+namespace UVBStealer;
 
 public class ChannelPoller : BackgroundService
 {

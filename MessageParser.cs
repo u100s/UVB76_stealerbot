@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace UVBStoler;
+namespace UVBStealer;
 
 public static partial class MessageParser
 {

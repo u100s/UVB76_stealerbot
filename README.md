@@ -38,5 +38,5 @@ chmod +x deploy.sh
 
 Copy `appsettings.json` to the server manually on first deploy:
 ```bash
-scp appsettings.json botsvm:/opt/uvbstoler/
+scp appsettings.json botsvm:/opt/uvbstealer/
 ```
