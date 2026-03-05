@@ -11,7 +11,7 @@ rm -rf ./publish
 dotnet publish -c Release -r linux-x64 --self-contained -o ./publish
 
 echo "=== Deploying to $SERVER:$REMOTE_DIR ==="
-ssh "$SERVER" "sudo mkdir -p $REMOTE_DIR && sudo chown \$(whoami) $REMOTE_DIR"
+ssh "$SERVER" "sudo mkdir -p $REMOTE_DIR $REMOTE_DIR/data/media && sudo chown -R \$(whoami) $REMOTE_DIR"
 rsync -avz --delete \
     --exclude 'data/' \
     --exclude 'memes/' \

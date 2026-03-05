@@ -13,6 +13,7 @@ public class BotCommandHandler : BackgroundService
     private readonly BotSender _botSender;
     private readonly ChannelPoller _channelPoller;
     private readonly MemeSender _memeSender;
+    private readonly MessageRecorder _recorder;
     private readonly ILogger<BotCommandHandler> _logger;
     private readonly string[] _emptyReplies;
     private readonly Random _random = new();
@@ -21,12 +22,14 @@ public class BotCommandHandler : BackgroundService
         BotSender botSender,
         ChannelPoller channelPoller,
         MemeSender memeSender,
+        MessageRecorder recorder,
         IConfiguration config,
         ILogger<BotCommandHandler> logger)
     {
         _botSender = botSender;
         _channelPoller = channelPoller;
         _memeSender = memeSender;
+        _recorder = recorder;
         _logger = logger;
         _emptyReplies = config.GetSection("EmptyReplies").Get<string[]>() ?? ["ЭФИР МОЛЧИТ"];
     }
@@ -48,6 +51,9 @@ public class BotCommandHandler : BackgroundService
 
     private async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, CancellationToken ct)
     {
+        if (update.Message is { } message)
+            await _recorder.RecordAsync(message, ct);
+
         if (update.Message?.Text is not { } text)
             return;
 

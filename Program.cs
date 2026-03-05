@@ -10,6 +10,8 @@ builder.Services.AddHttpClient("Poller", client =>
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
 });
 
+builder.Services.AddSingleton<StorageDb>();
+builder.Services.AddSingleton<MessageRecorder>();
 builder.Services.AddSingleton<BotSender>();
 builder.Services.AddSingleton<ChannelPoller>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ChannelPoller>());
@@ -18,4 +20,8 @@ builder.Services.AddSingleton<MemeSender>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<MemeSender>());
 
 var host = builder.Build();
+
+var storageDb = host.Services.GetRequiredService<StorageDb>();
+await storageDb.InitializeAsync();
+
 await host.RunAsync();

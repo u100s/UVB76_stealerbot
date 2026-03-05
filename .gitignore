@@ -8,3 +8,4 @@ appsettings.*.json
 !appsettings.json
 memes_sent.txt
 memes/
+data/
