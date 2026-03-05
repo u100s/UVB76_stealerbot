@@ -14,7 +14,8 @@ builder.Services.AddSingleton<BotSender>();
 builder.Services.AddSingleton<ChannelPoller>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ChannelPoller>());
 builder.Services.AddHostedService<BotCommandHandler>();
-builder.Services.AddHostedService<MemeSender>();
+builder.Services.AddSingleton<MemeSender>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<MemeSender>());
 
 var host = builder.Build();
 await host.RunAsync();

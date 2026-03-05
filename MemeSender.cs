@@ -68,6 +68,22 @@ public class MemeSender : BackgroundService
         _logger.LogInformation("MemeSender stopped");
     }
 
+    public string? PickRandomMeme()
+    {
+        if (!Directory.Exists(_memesDir))
+            return null;
+
+        var allFiles = Directory.EnumerateFiles(_memesDir, "*", SearchOption.AllDirectories)
+            .Where(f => ImageExtensions.Contains(Path.GetExtension(f)))
+            .Select(Path.GetFullPath)
+            .ToList();
+
+        if (allFiles.Count == 0)
+            return null;
+
+        return allFiles[_random.Next(allFiles.Count)];
+    }
+
     private async Task SendRandomMemeAsync(CancellationToken ct)
     {
         if (!Directory.Exists(_memesDir))

@@ -40,9 +40,14 @@ public class BotSender
 
     public async Task SendPhotoAsync(string filePath, CancellationToken ct = default)
     {
+        await SendPhotoAsync(_targetChatId, filePath, ct);
+    }
+
+    public async Task SendPhotoAsync(long chatId, string filePath, CancellationToken ct = default)
+    {
         await using var stream = File.OpenRead(filePath);
         var fileName = Path.GetFileName(filePath);
-        await _bot.SendPhoto(_targetChatId, InputFile.FromStream(stream, fileName), cancellationToken: ct);
+        await _bot.SendPhoto(chatId, InputFile.FromStream(stream, fileName), cancellationToken: ct);
     }
 
     public async Task SendWordAsync(string word, CancellationToken ct = default)

@@ -17,6 +17,7 @@ rsync -avz --delete \
     --exclude 'memes/' \
     --exclude 'memes_sent.txt' \
     --exclude 'appsettings*.json' \
+    --exclude '.DS_Store' \
     ./publish/ "$SERVER:$REMOTE_DIR/"
 
 echo "=== Copying production config ==="

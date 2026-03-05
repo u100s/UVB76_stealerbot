@@ -12,6 +12,7 @@ public class BotCommandHandler : BackgroundService
 {
     private readonly BotSender _botSender;
     private readonly ChannelPoller _channelPoller;
+    private readonly MemeSender _memeSender;
     private readonly ILogger<BotCommandHandler> _logger;
     private readonly string[] _emptyReplies;
     private readonly Random _random = new();
@@ -19,11 +20,13 @@ public class BotCommandHandler : BackgroundService
     public BotCommandHandler(
         BotSender botSender,
         ChannelPoller channelPoller,
+        MemeSender memeSender,
         IConfiguration config,
         ILogger<BotCommandHandler> logger)
     {
         _botSender = botSender;
         _channelPoller = channelPoller;
+        _memeSender = memeSender;
         _logger = logger;
         _emptyReplies = config.GetSection("EmptyReplies").Get<string[]>() ?? ["ЭФИР МОЛЧИТ"];
     }
@@ -50,12 +53,22 @@ public class BotCommandHandler : BackgroundService
 
         var normalized = text.Trim().ToLowerInvariant().Replace(",", "").Replace("!", "");
 
-        if (normalized is not ("бот жги" or "/burn"))
-            return;
-
         var chatId = update.Message.Chat.Id;
-        _logger.LogInformation("Received '{Command}' from chat {ChatId}", text, chatId);
 
+        if (normalized is "бот жги" or "/burn")
+        {
+            _logger.LogInformation("Received '{Command}' from chat {ChatId}", text, chatId);
+            await HandleBurnAsync(chatId, ct);
+        }
+        else if (normalized is "бот мем" or "бот дай мем" or "бот мемас" or "бот дай мемас" or "/meme")
+        {
+            _logger.LogInformation("Received '{Command}' from chat {ChatId}", text, chatId);
+            await HandleMemeAsync(chatId, ct);
+        }
+    }
+
+    private async Task HandleBurnAsync(long chatId, CancellationToken ct)
+    {
         try
         {
             var words = _channelPoller.DrainRecentWords();
@@ -70,13 +83,35 @@ public class BotCommandHandler : BackgroundService
 
             var response = string.Join("\n", words.Select((w, i) => $"{i + 1}. {w}"));
             await _botSender.SendMessageAsync(chatId, response, ct);
-
             _logger.LogInformation("Sent {Count} recent words to chat {ChatId}", words.Count, chatId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error handling command in chat {ChatId}", chatId);
+            _logger.LogError(ex, "Error handling burn command in chat {ChatId}", chatId);
             await _botSender.SendMessageAsync(chatId, "ОШИБКА ПРИЁМА", ct);
+        }
+    }
+
+    private async Task HandleMemeAsync(long chatId, CancellationToken ct)
+    {
+        try
+        {
+            var memePath = _memeSender.PickRandomMeme();
+
+            if (memePath is null)
+            {
+                await _botSender.SendMessageAsync(chatId, "МЕМОВ НЕТ", ct);
+                _logger.LogWarning("No memes available for chat {ChatId}", chatId);
+                return;
+            }
+
+            await _botSender.SendPhotoAsync(chatId, memePath, ct);
+            _logger.LogInformation("Sent meme {Path} to chat {ChatId}", memePath, chatId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling meme command in chat {ChatId}", chatId);
+            await _botSender.SendMessageAsync(chatId, "ОШИБКА ПЕРЕДАЧИ", ct);
         }
     }
 
