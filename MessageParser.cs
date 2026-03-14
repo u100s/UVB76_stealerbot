@@ -12,15 +12,15 @@ public static partial class MessageParser
     [GeneratedRegex(@"<div class=""tgme_widget_message_text[^""]*""[^>]*>(.*?)</div>", RegexOptions.Singleline | RegexOptions.Compiled)]
     private static partial Regex MessageTextRegex();
 
-    // Extracts WORD from: НЖТИ XXXXX СЛОВО XXXX XXXX
-    [GeneratedRegex(@"НЖТИ\s+\d{5}\s+(\S+)\s+\d{4}\s+\d{4}", RegexOptions.Compiled)]
-    private static partial Regex WordRegex();
+    // Extracts each WORD from segments like: СЛОВО XXXX XXXX
+    [GeneratedRegex(@"([А-ЯЁ]{2,})\s+\d{4}\s+\d{4}", RegexOptions.Compiled)]
+    private static partial Regex WordSegmentRegex();
 
     // Strip HTML tags
     [GeneratedRegex(@"<[^>]+>", RegexOptions.Compiled)]
     private static partial Regex HtmlTagRegex();
 
-    public record ParsedMessage(string PostId, string Word);
+    public record ParsedMessage(string PostId, List<string> Words);
 
     public static List<ParsedMessage> ParseLatestWords(string html)
     {
@@ -44,11 +44,16 @@ public static partial class MessageParser
             var rawText = textMatch.Groups[1].Value;
             var plainText = HtmlTagRegex().Replace(rawText, " ");
 
-            var wordMatch = WordRegex().Match(plainText);
-            if (!wordMatch.Success)
+            // Only process messages containing НЖТИ
+            if (!plainText.Contains("НЖТИ"))
                 continue;
 
-            results.Add(new ParsedMessage(postId, wordMatch.Groups[1].Value));
+            var wordMatches = WordSegmentRegex().Matches(plainText);
+            if (wordMatches.Count == 0)
+                continue;
+
+            var words = wordMatches.Select(m => m.Groups[1].Value).ToList();
+            results.Add(new ParsedMessage(postId, words));
         }
 
         return results;

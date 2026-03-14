@@ -16,6 +16,7 @@ public class ChannelPoller : BackgroundService
     private readonly object _recentLock = new();
     private readonly Random _random = new();
     private bool _initialSeedDone;
+    private int _consecutiveErrors;
 
     public ChannelPoller(
         IHttpClientFactory httpClientFactory,
@@ -28,7 +29,7 @@ public class ChannelPoller : BackgroundService
         _logger = logger;
 
         _sourceUrl = config["Poller:SourceUrl"] ?? "https://t.me/s/uvb76logs";
-        _intervalSeconds = config.GetValue("Poller:IntervalSeconds", 20);
+        _intervalSeconds = config.GetValue("Poller:IntervalSeconds", 60);
     }
 
     public List<string> DrainRecentWords()
@@ -51,6 +52,7 @@ public class ChannelPoller : BackgroundService
             try
             {
                 await PollAsync(stoppingToken);
+                _consecutiveErrors = 0;
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -58,11 +60,16 @@ public class ChannelPoller : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during polling");
+                _consecutiveErrors++;
+                _logger.LogWarning(ex, "Polling error #{Count}", _consecutiveErrors);
             }
 
-            var jitter = _intervalSeconds * 0.25;
-            var delay = _intervalSeconds + (_random.NextDouble() * 2 - 1) * jitter;
+            // Exponential backoff on errors, capped at 10 min; wide jitter (±50%) to look less like a bot
+            var backoff = _consecutiveErrors > 0
+                ? Math.Min(_intervalSeconds * Math.Pow(2, _consecutiveErrors), 600)
+                : _intervalSeconds;
+            var jitter = backoff * 0.5;
+            var delay = backoff + (_random.NextDouble() * 2 - 1) * jitter;
             await Task.Delay(TimeSpan.FromSeconds(delay), stoppingToken);
         }
 
@@ -74,7 +81,7 @@ public class ChannelPoller : BackgroundService
         var client = _httpClientFactory.CreateClient("Poller");
         var html = await client.GetStringAsync(_sourceUrl, ct);
 
-        _logger.LogDebug("Fetched {Length} bytes from {Url}", html.Length, _sourceUrl);
+        _logger.LogInformation("Fetched {Length} bytes from {Url}", html.Length, _sourceUrl);
 
         var messages = MessageParser.ParseLatestWords(html);
 
@@ -93,18 +100,20 @@ public class ChannelPoller : BackgroundService
             if (!_seenPostIds.Add(msg.PostId))
                 continue;
 
-            _logger.LogInformation("New message #{PostId}: word = '{Word}'", msg.PostId, msg.Word);
+            _logger.LogInformation("New message #{PostId}: words = '{Words}'",
+                msg.PostId, string.Join(", ", msg.Words));
 
             lock (_recentLock)
-                _recentWords.Add(msg.Word);
+                _recentWords.AddRange(msg.Words);
 
+            var text = string.Join(" ", msg.Words);
             try
             {
-                await _botSender.SendWordAsync(msg.Word, ct);
+                await _botSender.SendWordAsync(text, ct);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send word '{Word}'", msg.Word);
+                _logger.LogError(ex, "Failed to send words '{Words}'", text);
             }
         }
 
