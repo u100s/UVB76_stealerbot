@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-SERVER="botsvm"
+SERVER="AmneziaDE"
 REMOTE_DIR="/opt/uvbstealer"
 SERVICE="uvbstealer"
 PROJECT="UVBStealer"
@@ -10,18 +10,18 @@ echo "=== Building $PROJECT ==="
 rm -rf ./publish
 dotnet publish -c Release -r linux-x64 --self-contained -o ./publish
 
+echo "=== Merging config ==="
+jq -s '.[0] * .[1]' appsettings.json appsettings.Production.json > ./publish/appsettings.json
+rm -f ./publish/appsettings.*.json
+
 echo "=== Deploying to $SERVER:$REMOTE_DIR ==="
 ssh "$SERVER" "sudo mkdir -p $REMOTE_DIR $REMOTE_DIR/data/media && sudo chown -R \$(whoami) $REMOTE_DIR"
 rsync -avz --delete \
     --exclude 'data/' \
     --exclude 'memes/' \
     --exclude 'memes_sent.txt' \
-    --exclude 'appsettings*.json' \
     --exclude '.DS_Store' \
     ./publish/ "$SERVER:$REMOTE_DIR/"
-
-echo "=== Copying production config ==="
-scp appsettings.Production.json "$SERVER:$REMOTE_DIR/appsettings.Production.json"
 
 echo "=== Setting up systemd service ==="
 ssh "$SERVER" "sudo tee /etc/systemd/system/$SERVICE.service > /dev/null" <<EOF

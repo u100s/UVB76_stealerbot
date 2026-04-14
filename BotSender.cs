@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 
 namespace UVBStealer;
 
@@ -48,6 +49,19 @@ public class BotSender
         await using var stream = File.OpenRead(filePath);
         var fileName = Path.GetFileName(filePath);
         await _bot.SendPhoto(chatId, InputFile.FromStream(stream, fileName), cancellationToken: ct);
+    }
+
+    public async Task SendPhotoByFileIdAsync(long chatId, string fileId, CancellationToken ct = default)
+    {
+        await _bot.SendPhoto(chatId, InputFile.FromFileId(fileId), cancellationToken: ct);
+    }
+
+    public async Task ReplyAsync(long chatId, int replyToMessageId, string text,
+        ParseMode parseMode = default, CancellationToken ct = default)
+    {
+        await _bot.SendMessage(chatId, text, parseMode: parseMode,
+            replyParameters: new ReplyParameters { MessageId = replyToMessageId },
+            cancellationToken: ct);
     }
 
     public async Task SendWordAsync(string word, CancellationToken ct = default)
