@@ -12,10 +12,12 @@ namespace UVBStealer;
 public class BotCommandHandler : BackgroundService
 {
     private readonly BotSender _botSender;
-    private readonly ChannelListener _channelListener;
+    private readonly ChannelPoller _channelPoller;
     private readonly MemeSender _memeSender;
     private readonly MessageRecorder _recorder;
     private readonly ILogger<BotCommandHandler> _logger;
+    private readonly HashSet<long> _adminIds;
+    private readonly long _targetChatId;
     private readonly string[] _emptyReplies;
     private readonly Random _random = new();
     private long _botUserId;
@@ -52,17 +54,19 @@ public class BotCommandHandler : BackgroundService
 
     public BotCommandHandler(
         BotSender botSender,
-        ChannelListener channelListener,
+        ChannelPoller channelPoller,
         MemeSender memeSender,
         MessageRecorder recorder,
         IConfiguration config,
         ILogger<BotCommandHandler> logger)
     {
         _botSender = botSender;
-        _channelListener = channelListener;
+        _channelPoller = channelPoller;
         _memeSender = memeSender;
         _recorder = recorder;
         _logger = logger;
+        _adminIds = config.GetSection("Admins").Get<long[]>()?.ToHashSet() ?? [];
+        _targetChatId = long.Parse(config["Bot:TargetChatId"]!);
         _emptyReplies = config.GetSection("EmptyReplies").Get<string[]>() ?? ["ЭФИР МОЛЧИТ"];
     }
 
@@ -113,6 +117,15 @@ public class BotCommandHandler : BackgroundService
             _logger.LogInformation("Received '{Command}' from chat {ChatId}", text, chatId);
             await HandleHelpAsync(chatId, en, ct);
         }
+        else if (update.Message.Chat.Type == ChatType.Private
+                 && update.Message.From is { } sender
+                 && _adminIds.Contains(sender.Id)
+                 && normalized is "кинь мем" or "кинь мем в группу" or "мем в группу"
+                     or "скинь мем" or "скинь мем в группу" or "отправь мем" or "отправь мем в группу")
+        {
+            _logger.LogInformation("Admin {UserId} requested meme to group", sender.Id);
+            await HandleAdminMemeAsync(chatId, ct);
+        }
         else if (update.Message.ReplyToMessage is { Photo: { Length: > 0 } } replyTarget
                  && replyTarget.From?.Id == _botUserId
                  && DmRequestPhrases.Contains(normalized))
@@ -127,7 +140,7 @@ public class BotCommandHandler : BackgroundService
     {
         try
         {
-            var words = _channelListener.DrainRecentWords();
+            var words = _channelPoller.DrainRecentWords();
 
             if (words.Count == 0)
             {
@@ -191,6 +204,29 @@ public class BotCommandHandler : BackgroundService
               /help, бот помоги — эта справка
               """;
         await _botSender.SendMessageAsync(chatId, help, ct);
+    }
+
+    private async Task HandleAdminMemeAsync(long adminChatId, CancellationToken ct)
+    {
+        try
+        {
+            var memePath = _memeSender.PickRandomMeme();
+
+            if (memePath is null)
+            {
+                await _botSender.SendMessageAsync(adminChatId, "МЕМОВ НЕТ", ct);
+                _logger.LogWarning("No memes available for admin meme request");
+                return;
+            }
+
+            await _botSender.SendPhotoAsync(_targetChatId, memePath, ct);
+            _logger.LogInformation("Admin triggered meme {Path} to group {ChatId}", memePath, _targetChatId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending admin-triggered meme to group");
+            await _botSender.SendMessageAsync(adminChatId, "ОШИБКА ПЕРЕДАЧИ", ct);
+        }
     }
 
     private async Task HandleDmPhotoRequestAsync(Message requestMessage, Message photoMessage, CancellationToken ct)

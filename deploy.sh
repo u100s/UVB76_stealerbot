@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-SERVER="AmneziaDE"
+SERVER="botsvm"
 REMOTE_DIR="/opt/uvbstealer"
 SERVICE="uvbstealer"
 PROJECT="UVBStealer"
