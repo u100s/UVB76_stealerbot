@@ -12,8 +12,8 @@ public static partial class MessageParser
     [GeneratedRegex(@"<div class=""tgme_widget_message_text[^""]*""[^>]*>(.*?)</div>", RegexOptions.Singleline | RegexOptions.Compiled)]
     private static partial Regex MessageTextRegex();
 
-    // Extracts each WORD from segments like: СЛОВО XXXX XXXX
-    [GeneratedRegex(@"([А-ЯЁ]{2,})\s+\d{4}\s+\d{4}", RegexOptions.Compiled)]
+    // Extracts each WORD from segments like: NNNNN СЛОВО XXXX XXXX
+    [GeneratedRegex(@"\d{5}\s+([А-ЯЁ]{2,})\s+\d{4}\s+\d{4}", RegexOptions.Compiled)]
     private static partial Regex WordSegmentRegex();
 
     // Strip HTML tags
@@ -43,10 +43,6 @@ public static partial class MessageParser
 
             var rawText = textMatch.Groups[1].Value;
             var plainText = HtmlTagRegex().Replace(rawText, " ");
-
-            // Only process messages containing НЖТИ
-            if (!plainText.Contains("НЖТИ"))
-                continue;
 
             var wordMatches = WordSegmentRegex().Matches(plainText);
             if (wordMatches.Count == 0)

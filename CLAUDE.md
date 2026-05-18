@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-UVBStealer is a .NET 9 console app that monitors the public Telegram channel `@uvb76logs` for UVB-76 radio station messages, extracts the keyword (СЛОВО) from the standard format `НЖТИ XXXXX СЛОВО XXXX XXXX`, and forwards it to a private Telegram group via bot. Users can also request recent words via bot commands (`бот жги` or `/burn`).
+UVBStealer is a .NET 9 console app that monitors the public Telegram channel `@uvb76logs` for UVB-76 radio station messages, extracts the keyword (СЛОВО) matching the structural pattern `NNNNN СЛОВО XXXX XXXX` (5 digits, uppercase Cyrillic word, two 4-digit groups), and forwards it to a private Telegram group via bot. Users can also request recent words via bot commands (`бот жги` or `/burn`).
 
 ## Build & Run
 

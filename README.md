@@ -4,11 +4,13 @@ Monitors the public Telegram channel [@uvb76logs](https://t.me/s/uvb76logs) for 
 
 ## Message format
 
+Any message containing the structural pattern is captured:
+
 ```
-НЖТИ XXXXX СЛОВО XXXX XXXX
+NNNNN СЛОВО XXXX XXXX
 ```
 
-The extracted `СЛОВО` is sent to the target chat.
+(5 digits, uppercase Cyrillic word, two 4-digit groups). The extracted `СЛОВО` is sent to the target chat. Known headers seen in practice: `НЖТИ XXXXX ...`, `ТОДN УNNN ДХГЕ NNNNN NNNNN NNNNN ...`.
 
 ## Configuration
 
