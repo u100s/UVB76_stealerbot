@@ -243,6 +243,7 @@ public class BotCommandHandler : BackgroundService
         {
             await _botSender.SendPhotoByFileIdAsync(userId.Value, fileId, ct);
             _logger.LogInformation("Sent photo to user {UserId} DM", userId);
+            await _botSender.ReplyAsync(chatId, messageId, "кинул", ct: ct);
         }
         catch (ApiRequestException ex) when (ex.ErrorCode == 403)
         {

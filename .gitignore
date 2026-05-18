@@ -8,5 +8,6 @@ appsettings.*.json
 !appsettings.json
 memes_sent.txt
 memes/
+download_memes.sh
 data/
 *.session
